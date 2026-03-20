@@ -1,123 +1,165 @@
-# CoolBox – Server Deployment Guide
+# CoolBox – On-Premise Deployment Guide
 
-This document is for the **server administrator** who will deploy the CoolBox application. The application consists of a **business presentation** (React) and a **survey form with analytics dashboard** (Flask), bundled into a single Docker container.
-
----
-
-## Prerequisites
-
-- **Docker** (version 20+ recommended)
-- **Port 8080** available (or configure a different port)
-- The `coolbox/` folder transferred to the server
+One Docker container bundles a **React presentation** + **Flask survey form & dashboard**.
 
 ---
 
-## Quick Deploy
+## 1. Prerequisites
+
+On the faculty server, make sure you have:
 
 ```bash
-cd /path/to/coolbox
+docker --version   # Docker 20+
+git --version      # any recent version
+```
+
+If Docker is missing: `sudo apt install docker.io && sudo systemctl enable --now docker`  
+Add your user to the docker group so you don't need sudo: `sudo usermod -aG docker $USER` (log out/in after).
+
+---
+
+## 2. Get the Code
+
+```bash
+git clone https://github.com/iancustefan26/CoolBOX.git
+cd CoolBOX
+```
+
+---
+
+## 3. Deploy
+
+```bash
 chmod +x deploy.sh
 ./deploy.sh
 ```
 
-That's it. The script will:
-1. Build the Docker image (multi-stage: Node.js builds the React presentation, Python runs the Flask backend)
-2. Create a Docker volume (`coolbox-data`) for persistent database storage
-3. Start the container
+This builds the image (~2 min first time), creates a persistent volume for the database, and starts the container on **port 8080**.
 
----
+Verify it works:
 
-## What's in the Folder
-
-| File / Folder | Purpose |
-|---|---|
-| `frontend/` | React/Vite source for the presentation slides |
-| `backend/app.py` | Flask backend (form, dashboard, API, serves presentation) |
-| `backend/requirements.txt` | Python dependencies (Flask, openpyxl) |
-| `backend/templates/` | HTML templates (form & dashboard) |
-| `backend/assets/` | Static files (logo) |
-| `Dockerfile` | Multi-stage Docker build definition |
-| `deploy.sh` | Automated deployment script |
-| `.dockerignore` | Excludes unnecessary files from Docker build |
-
----
-
-## Application URLs
-
-After deployment at `http://<server>:8080`:
-
-| URL | Description |
-|---|---|
-| `/coolbox/` | Business presentation (7-slide animated slideshow) |
-| `/coolbox/form` | Survey form |
-| `/coolbox/form/dashboard` | Analytics dashboard with charts |
-| `/coolbox/form/api/stats` | JSON stats endpoint (GET) |
-| `/coolbox/form/api/export` | Export responses as Excel (GET) |
-
-The presentation's last slide has a button that redirects users to the survey form.
-
----
-
-## Environment Variables
-
-| Variable | Default | Description |
-|---|---|---|
-| `COOLBOX_PORT` | `8080` | Host port to map to the container |
-| `COOLBOX_SUBPATH` | `coolbox/form` | URL subpath for the form application |
-
-Example with custom port:
 ```bash
-COOLBOX_PORT=9000 ./deploy.sh
+curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/coolbox/
+# Should print: 200
 ```
 
 ---
 
-## Reverse Proxy (Nginx)
+## 4. Expose to the Web (Nginx Reverse Proxy)
 
-If the server runs behind Nginx (e.g., at `https://projects.example.com/coolbox/`):
+The app listens on `localhost:8080`. To make it reachable from the internet at `https://your-server.faculty.ro/coolbox/`, put Nginx in front of it.
+
+### Install Nginx (if not already present)
+
+```bash
+sudo apt install nginx
+```
+
+### Create a site config
+
+```bash
+sudo nano /etc/nginx/sites-available/coolbox
+```
+
+Paste this (replace `your-server.faculty.ro` with the actual hostname):
 
 ```nginx
-location /coolbox/ {
-    proxy_pass http://localhost:8080/coolbox/;
-    proxy_set_header Host $host;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto $scheme;
+server {
+    listen 80;
+    server_name your-server.faculty.ro;
+
+    location /coolbox/ {
+        proxy_pass http://127.0.0.1:8080/coolbox/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
 }
 ```
 
-Then reload Nginx:
+Enable and reload:
+
 ```bash
+sudo ln -s /etc/nginx/sites-available/coolbox /etc/nginx/sites-enabled/
+sudo nginx -t            # check syntax
 sudo systemctl reload nginx
+```
+
+Now `http://your-server.faculty.ro/coolbox/` is live.
+
+### Add HTTPS (optional but recommended)
+
+```bash
+sudo apt install certbot python3-certbot-nginx
+sudo certbot --nginx -d your-server.faculty.ro
+```
+
+Certbot auto-configures SSL and sets up auto-renewal.
+
+---
+
+## 5. Auto-Restart on Reboot
+
+The container should restart automatically if the server reboots:
+
+```bash
+docker update --restart unless-stopped coolbox-form
 ```
 
 ---
 
-## Data Persistence
+## 6. URLs
 
-- **Database**: SQLite, stored inside Docker volume `coolbox-data` at `/app/data/responses.db`
-- The volume persists across container stops/restarts
-- **Backup**:
-  ```bash
-  docker run --rm -v coolbox-data:/data -v $(pwd):/backup \
-    ubuntu tar czf /backup/coolbox_backup_$(date +%Y%m%d).tar.gz -C /data .
-  ```
-- **Restore**:
-  ```bash
-  docker run --rm -v coolbox-data:/data -v $(pwd):/backup \
-    ubuntu tar xzf /backup/coolbox_backup_YYYYMMDD.tar.gz -C /data
-  ```
+| URL | What it does |
+|---|---|
+| `/coolbox/` | Animated business presentation |
+| `/coolbox/form` | Survey form |
+| `/coolbox/form/dashboard` | Analytics dashboard (charts + export) |
+| `/coolbox/form/api/stats` | JSON stats (GET) |
+| `/coolbox/form/api/export` | Download responses as Excel (GET) |
 
 ---
 
-## Common Operations
+## 7. Common Operations
 
-| Task | Command |
-|---|---|
-| View live logs | `docker logs -f coolbox-form` |
-| Check status | `docker ps \| grep coolbox-form` |
-| Restart container | `docker restart coolbox-form` |
-| Stop container | `docker stop coolbox-form` |
+```bash
+docker logs -f coolbox-form       # live logs
+docker restart coolbox-form       # restart
+docker stop coolbox-form          # stop
+docker ps | grep coolbox          # status
+```
+
+### Update to latest code
+
+```bash
+cd CoolBOX
+git pull
+docker stop coolbox-form && docker rm coolbox-form
+./deploy.sh
+```
+
+The database lives in a Docker volume (`coolbox-data`) and survives container rebuilds.
+
+### Backup the database
+
+```bash
+docker run --rm -v coolbox-data:/data -v $(pwd):/backup \
+  ubuntu tar czf /backup/coolbox_backup_$(date +%Y%m%d).tar.gz -C /data .
+```
+
+---
+
+## Project Structure
+
+```
+CoolBOX/
+├── frontend/       # React/Vite presentation source
+├── backend/        # Flask app, templates, assets, requirements.txt
+├── Dockerfile      # Multi-stage build (Node → Python)
+├── deploy.sh       # One-command deploy script
+└── .dockerignore
+```
 | Start stopped container | `docker start coolbox-form` |
 
 ### Updating the Application
