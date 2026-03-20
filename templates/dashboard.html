@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CoolBox - Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --green-dark: #006D00;
+            --green: #009000;
+            --green-medium: #00A840;
+            --green-light: #80D0A0;
+            --green-pale: #E0F5EA;
+            --blue-light: #80E8E8;
+            --blue-pale: #E0F8F8;
+            --blue-medium: #00D0D0;
+            --blue-dark: #009898;
+            --white: #FFFFFF;
+            --gray-50: #FAFAFA;
+            --gray-100: #F5F5F5;
+            --gray-200: #EEEEEE;
+            --gray-300: #E0E0E0;
+            --gray-500: #9E9E9E;
+            --gray-700: #616161;
+            --gray-900: #212121;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--gray-50);
+            color: var(--gray-900);
+            min-height: 100vh;
+        }
+
+        /* Header */
+        .dashboard-header {
+            background: linear-gradient(135deg, var(--green-dark) 0%, var(--green) 50%, #00A840 100%);
+            color: white;
+            padding: 32px 40px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .dashboard-header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -10%;
+            width: 400px;
+            height: 400px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 50%;
+        }
+
+        .dashboard-header::after {
+            content: '';
+            position: absolute;
+            bottom: -60%;
+            left: 20%;
+            width: 300px;
+            height: 300px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 50%;
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 700;
+            font-size: 1.3rem;
+        }
+
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .logo-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .header-btn {
+            padding: 10px 20px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 8px;
+            background: rgba(255,255,255,0.1);
+            color: white;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 500;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .header-btn:active {
+            background: rgba(255,255,255,0.3);
+        }
+
+
+
+        .header-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header-subtitle {
+            font-size: 1rem;
+            opacity: 0.8;
+            font-weight: 400;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* KPI Cards */
+        .kpi-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            padding: 0 40px;
+            margin-top: -30px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .kpi-card {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+        }
+
+        .kpi-card:active {
+            background: var(--green-pale);
+        }
+
+
+
+        .kpi-label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--gray-500);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .kpi-value {
+            font-size: 2.2rem;
+            font-weight: 700;
+            color: var(--green-dark);
+        }
+
+        .kpi-value.blue {
+            color: var(--blue-dark);
+        }
+
+        .kpi-sub {
+            font-size: 0.85rem;
+            color: var(--gray-500);
+            margin-top: 4px;
+        }
+
+        /* Main Grid */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            padding: 32px 40px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 28px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+        }
+
+        .card-full {
+            grid-column: 1 / -1;
+        }
+
+        .card-title {
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: var(--gray-900);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card-title span {
+            font-size: 1.2rem;
+        }
+
+        .card-sub {
+            font-size: 0.8rem;
+            color: var(--gray-500);
+            margin-top: -12px;
+            margin-bottom: 16px;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 280px;
+        }
+
+        .chart-container-tall {
+            height: 320px;
+        }
+
+        /* Recent Responses Table */
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            text-align: left;
+            padding: 12px 16px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--gray-500);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid var(--gray-200);
+        }
+
+        td {
+            padding: 14px 16px;
+            font-size: 0.9rem;
+            color: var(--gray-700);
+            border-bottom: 1px solid var(--gray-100);
+        }
+
+
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .badge-green {
+            background: var(--green-pale);
+            color: var(--green-dark);
+        }
+
+        /* Loading state */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 200px;
+            color: var(--gray-500);
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--gray-200);
+            border-top-color: var(--green);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 12px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .empty-state-icon {
+            font-size: 3rem;
+            margin-bottom: 16px;
+        }
+
+        .empty-state-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--gray-700);
+            margin-bottom: 8px;
+        }
+
+        .empty-state-text {
+            font-size: 0.95rem;
+            color: var(--gray-500);
+            margin-bottom: 24px;
+        }
+
+        .empty-state a {
+            color: var(--green);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        /* Responsive - Tablets */
+        @media (max-width: 768px) {
+            .dashboard-header { padding: 24px 20px; }
+            .kpi-row { padding: 0 20px; grid-template-columns: 1fr 1fr; }
+            .dashboard-grid { grid-template-columns: 1fr; padding: 20px; gap: 16px; }
+            .header-top { flex-direction: column; gap: 16px; align-items: flex-start; }
+            .chart-container { height: 250px; }
+        }
+
+        /* Responsive - Phones */
+        @media (max-width: 480px) {
+            .dashboard-header { padding: 20px 16px; }
+            .header-title { font-size: 1.3rem; margin-bottom: 4px; }
+            .header-subtitle { font-size: 0.85rem; }
+            .logo { font-size: 1.1rem; }
+            .logo-icon { width: 30px; height: 30px; }
+
+            .header-actions { width: 100%; gap: 8px; }
+            .header-btn { padding: 8px 14px; font-size: 0.8rem; flex: 1; justify-content: center; text-align: center; }
+
+            .kpi-row {
+                padding: 0 12px;
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+                margin-top: -24px;
+            }
+            .kpi-card { padding: 16px; border-radius: 12px; }
+            .kpi-label { font-size: 0.7rem; margin-bottom: 4px; }
+            .kpi-value { font-size: 1.6rem; }
+            .kpi-value[style*="font-size"] { font-size: 1rem !important; }
+            .kpi-sub { font-size: 0.75rem; }
+
+            .dashboard-grid { padding: 16px 12px; gap: 12px; }
+            .card { padding: 18px; border-radius: 12px; }
+            .card-title { font-size: 0.95rem; margin-bottom: 14px; gap: 6px; }
+            .card-title span { font-size: 1rem; }
+
+            .chart-container { height: 240px; }
+            .chart-container-tall { height: 280px; }
+
+            /* Table scrolling */
+            .table-container { margin: 0 -18px; padding: 0 18px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+            th { padding: 10px 12px; font-size: 0.7rem; }
+            td { padding: 10px 12px; font-size: 0.8rem; }
+
+            .badge { padding: 3px 8px; font-size: 0.65rem; }
+        }
+
+        /* Very small phones */
+        @media (max-width: 360px) {
+            .kpi-row { grid-template-columns: 1fr 1fr; gap: 8px; padding: 0 8px; }
+            .kpi-card { padding: 12px; }
+            .kpi-value { font-size: 1.4rem; }
+            .dashboard-grid { padding: 12px 8px; }
+            .card { padding: 14px; }
+            .chart-container { height: 200px; }
+            .header-btn { padding: 6px 10px; font-size: 0.75rem; }
+        }
+    </style>
+</head>
+<body>
+    <header class="dashboard-header">
+        <div class="header-top">
+            <div class="logo">
+                <a href="/coolbox/" class="logo-icon"><img src="{{ subpath }}/assets/logo.png" alt="CoolBox"></a>
+                CoolBox
+            </div>
+            <div class="header-actions">
+                <a href="{{ subpath }}/" class="header-btn">&#x1F4DD; View Form</a>
+            </div>
+        </div>
+        <h1 class="header-title">Response Dashboard</h1>
+    </header>
+
+    <div class="kpi-row">
+        <div class="kpi-card">
+            <div class="kpi-label">Total Responses</div>
+            <div class="kpi-value" id="kpiTotal">-</div>
+            <div class="kpi-sub">survey submissions</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">Meal Prep</div>
+            <div class="kpi-value blue" id="kpiMealPrep" style="font-size:1.3rem">-</div>
+            <div class="kpi-sub">said yes</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">Would Pay</div>
+            <div class="kpi-value" id="kpiWouldPay" style="font-size:1.3rem">-</div>
+            <div class="kpi-sub">said yes</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">Cool Locker</div>
+            <div class="kpi-value" id="kpiLocker" style="font-size:1.3rem">-</div>
+            <div class="kpi-sub">would pick up</div>
+        </div>
+    </div>
+
+    <div class="dashboard-grid" id="dashboardContent">
+        <div class="loading card card-full" id="loadingState">
+            <div class="spinner"></div>
+            Loading dashboard data...
+        </div>
+    </div>
+
+    <script>
+        // Set base path for API calls (supports deployment at subpath)
+        const SUBPATH = '{{ subpath }}';
+        const API_BASE = SUBPATH || '';
+
+        // Label-to-color map for specific answers
+        const LABEL_COLORS = {
+            // Yes/No (used across multiple questions)
+            'Yes':        '#009000',
+            'No':         '#80E8E8',
+            // Q1: Supermarket time
+            "That's a lot, I can't stand it anymore":              '#009000',   // green
+            "I accept it, but I'm open to becoming more efficient": '#80D0A0',  // lighter green
+            'It is what it is...':                                  '#F28482',  // light red
+            // Q7: Gender
+            'Male':               '#009000',   // green
+            'Female':             '#80E8E8',   // light blue
+            'Prefer not to say':  '#F28482',   // light red
+            // Q8: Age range
+            '18-25 years': '#F4A261',  // warm orange
+            '25-35 years': '#E76F51',  // terracotta
+            '36-50 years': '#2A9D8F',  // teal
+            '50+ years':   '#E9C46A',  // gold
+        };
+
+        // Fallback palette for any unknown labels
+        const FALLBACK_PALETTE = [
+            '#F4A261', '#E76F51', '#264653', '#2A9D8F', '#E9C46A',
+            '#7B2D8E', '#D62828', '#457B9D', '#F28482', '#6A994E',
+            '#BC6C25', '#023047',
+        ];
+
+        // Assigns a color to each data item from the map, or falls back to the palette
+        function getDatasetColors(dataArr) {
+            let fallbackIdx = 0;
+            return dataArr.map(d => {
+                if (LABEL_COLORS[d.label]) return LABEL_COLORS[d.label];
+                return FALLBACK_PALETTE[fallbackIdx++ % FALLBACK_PALETTE.length];
+            });
+        }
+
+        function getYesCount(arr) {
+            const yes = arr.find(d => d.label === 'Yes');
+            return yes ? yes.count : 0;
+        }
+
+        async function loadDashboard() {
+            try {
+                const resp = await fetch(API_BASE + '/api/stats');
+                const data = await resp.json();
+
+                if (data.total_responses === 0) {
+                    showEmptyState();
+                    return;
+                }
+
+                const total = data.total_responses;
+
+                // KPIs
+                document.getElementById('kpiTotal').textContent = total;
+
+                const mealYes = getYesCount(data.meal_prep);
+                const mealAnswered = data.answered.meal_prep || 0;
+                document.getElementById('kpiMealPrep').textContent = mealAnswered > 0 ? Math.round(mealYes / mealAnswered * 100) + '%' : '-';
+
+                const payYes = getYesCount(data.would_pay);
+                const payAnswered = data.answered.would_pay || 0;
+                document.getElementById('kpiWouldPay').textContent = payAnswered > 0 ? Math.round(payYes / payAnswered * 100) + '%' : '-';
+
+                const lockerYes = getYesCount(data.cool_locker);
+                const lockerAnswered = data.answered.cool_locker || 0;
+                document.getElementById('kpiLocker').textContent = lockerAnswered > 0 ? Math.round(lockerYes / lockerAnswered * 100) + '%' : '-';
+
+                // Build charts grid
+                const grid = document.getElementById('dashboardContent');
+                grid.innerHTML = `
+                    <div class="card">
+                        <div class="card-title"><span>&#x1F6D2;</span> Q1: Time Spent in Supermarkets</div>
+                        <div class="card-sub">${data.answered.supermarket_time} of ${total} answered</div>
+                        <div class="chart-container chart-container-tall"><canvas id="chartSupermarket"></canvas></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title"><span>&#x1F4E6;</span> Q2: Delivery Failure Experience</div>
+                        <div class="card-sub">${data.answered.delivery_failure} of ${total} answered</div>
+                        <div class="chart-container"><canvas id="chartDelivery"></canvas></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title"><span>&#x1F9CA;</span> Q3: Cool Locker Pickup</div>
+                        <div class="card-sub">${data.answered.cool_locker} of ${total} answered</div>
+                        <div class="chart-container"><canvas id="chartLocker"></canvas></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title"><span>&#x1F35D;</span> Q4: Meal Prep Delivery</div>
+                        <div class="card-sub">${data.answered.meal_prep} of ${total} answered</div>
+                        <div class="chart-container"><canvas id="chartMeal"></canvas></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title"><span>&#x1F4A1;</span> Q5: Shopping Recommendations</div>
+                        <div class="card-sub">${data.answered.shopping_recs} of ${total} answered</div>
+                        <div class="chart-container"><canvas id="chartRecs"></canvas></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title"><span>&#x1F4B0;</span> Q6: Would Pay for Service</div>
+                        <div class="card-sub">${data.answered.would_pay} of ${total} answered</div>
+                        <div class="chart-container"><canvas id="chartPay"></canvas></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title"><span>&#x1F465;</span> Q7: Gender</div>
+                        <div class="card-sub">${data.answered.gender} of ${total} answered</div>
+                        <div class="chart-container"><canvas id="chartGender"></canvas></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title"><span>&#x1F382;</span> Q8: Age Range</div>
+                        <div class="card-sub">${data.answered.age_range} of ${total} answered</div>
+                        <div class="chart-container"><canvas id="chartAge"></canvas></div>
+                    </div>
+                    <div class="card card-full">
+                        <div class="card-title"><span>&#x1F4CB;</span> Recent Responses</div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Date</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recentTable"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+
+                // Chart defaults
+                Chart.defaults.font.family = 'Inter';
+                Chart.defaults.plugins.legend.labels.usePointStyle = true;
+                Chart.defaults.plugins.legend.labels.padding = 16;
+
+                // Q1: Supermarket Time - Horizontal Bar
+                createHBar('chartSupermarket', data.supermarket_time);
+
+                // Q2: Delivery Failure - Doughnut Yes/No
+                createDoughnut('chartDelivery', data.delivery_failure);
+
+                // Q3: Cool Locker - Doughnut Yes/No
+                createDoughnut('chartLocker', data.cool_locker);
+
+                // Q4: Meal Prep - Doughnut Yes/Maybe/No
+                createDoughnut('chartMeal', data.meal_prep);
+
+                // Q5: Shopping Recs - Doughnut Yes/No
+                createDoughnut('chartRecs', data.shopping_recs);
+
+                // Q6: Would Pay - Doughnut Yes/No
+                createDoughnut('chartPay', data.would_pay);
+
+                // Q7: Gender - Doughnut
+                createDoughnut('chartGender', data.gender);
+
+                // Q8: Age - Doughnut
+                createDoughnut('chartAge', data.age_range);
+
+                // Recent table
+                const tbody = document.getElementById('recentTable');
+                data.recent.forEach(r => {
+                    const date = new Date(r.date).toLocaleDateString('en-US', {
+                        month: 'short', day: 'numeric', year: 'numeric'
+                    });
+                    tbody.innerHTML += `
+                        <tr>
+                            <td><strong>${escapeHTML(r.name)}</strong></td>
+                            <td>${date}</td>
+                            <td><span class="badge badge-green">Completed</span></td>
+                        </tr>
+                    `;
+                });
+
+            } catch (err) {
+                console.error(err);
+                document.getElementById('dashboardContent').innerHTML = `
+                    <div class="card card-full">
+                        <div class="empty-state">
+                            <div class="empty-state-icon">&#x26A0;&#xFE0F;</div>
+                            <div class="empty-state-title">Error loading data</div>
+                            <div class="empty-state-text">${escapeHTML(err.message)}</div>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        function showEmptyState() {
+            document.getElementById('dashboardContent').innerHTML = `
+                <div class="card card-full">
+                    <div class="empty-state">
+                        <div class="empty-state-icon">&#x1F4ED;</div>
+                        <div class="empty-state-title">No responses yet</div>
+                        <div class="empty-state-text">Share your form to start collecting responses.</div>
+                        <a href="/">&#x2192; Go to the form</a>
+                    </div>
+                </div>
+            `;
+        }
+
+        function isMobile() { return window.innerWidth <= 480; }
+
+        function createDoughnut(canvasId, dataArr) {
+            const mobile = isMobile();
+            new Chart(document.getElementById(canvasId), {
+                type: 'doughnut',
+                data: {
+                    labels: dataArr.map(d => d.label),
+                    datasets: [{
+                        data: dataArr.map(d => d.count),
+                        backgroundColor: getDatasetColors(dataArr),
+                        borderWidth: 0,
+                        hoverOffset: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '60%',
+                    plugins: {
+                        legend: {
+                            position: mobile ? 'bottom' : 'right',
+                            labels: {
+                                boxWidth: mobile ? 10 : 14,
+                                padding: mobile ? 8 : 16,
+                                font: { size: mobile ? 11 : 12 }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function createHBar(canvasId, dataArr) {
+            const mobile = isMobile();
+            new Chart(document.getElementById(canvasId), {
+                type: 'bar',
+                data: {
+                    labels: dataArr.map(d => d.label),
+                    datasets: [{
+                        data: dataArr.map(d => d.count),
+                        backgroundColor: getDatasetColors(dataArr),
+                        borderRadius: 6,
+                        borderSkipped: false
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            ticks: { stepSize: 1, font: { size: mobile ? 10 : 12 } },
+                            grid: { color: '#f0f0f0' }
+                        },
+                        y: {
+                            grid: { display: false },
+                            ticks: {
+                                font: { size: mobile ? 9 : 12 },
+                                callback: function(value) {
+                                    const label = this.getLabelForValue(value);
+                                    if (mobile && label.length > 20) return label.substring(0, 18) + '…';
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function createVBar(canvasId, dataArr) {
+            const mobile = isMobile();
+            new Chart(document.getElementById(canvasId), {
+                type: 'bar',
+                data: {
+                    labels: dataArr.map(d => d.label),
+                    datasets: [{
+                        data: dataArr.map(d => d.count),
+                        backgroundColor: getDatasetColors(dataArr),
+                        borderRadius: 6,
+                        borderSkipped: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { stepSize: 1, font: { size: mobile ? 10 : 12 } },
+                            grid: { color: '#f0f0f0' }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { font: { size: mobile ? 9 : 11 }, maxRotation: mobile ? 45 : 0 }
+                        }
+                    }
+                }
+            });
+        }
+
+        function escapeHTML(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        loadDashboard();
+    </script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+CoolBOX Business Presentation/node_modules
+CoolBOX Business Presentation/dist
+__pycache__
+*.pyc
+.DS_Store
+*.db

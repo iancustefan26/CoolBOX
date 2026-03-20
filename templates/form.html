@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CoolBox - Help Us Bring Fresh Groceries to You</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --green-dark: #006D00;
+            --green: #009000;
+            --green-medium: #00A840;
+            --green-light: #80D0A0;
+            --green-pale: #E0F5EA;
+            --blue-light: #80E8E8;
+            --blue-pale: #E0F8F8;
+            --blue-medium: #00D0D0;
+            --white: #FFFFFF;
+            --gray-50: #FAFAFA;
+            --gray-100: #F5F5F5;
+            --gray-300: #E0E0E0;
+            --gray-500: #9E9E9E;
+            --gray-700: #616161;
+            --gray-900: #212121;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--white);
+            color: var(--gray-900);
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        /* Progress bar */
+        .progress-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--green), var(--blue-medium));
+            transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1000;
+        }
+
+        /* Header */
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 20px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+            background: rgba(255,255,255,0.9);
+            backdrop-filter: blur(10px);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 700;
+            font-size: 1.3rem;
+            color: var(--green-dark);
+        }
+
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .logo-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .step-counter {
+            font-size: 0.85rem;
+            color: var(--gray-500);
+            font-weight: 500;
+        }
+
+        /* Slides container */
+        .slides-container {
+            height: 100vh;
+            position: relative;
+        }
+
+        .slide {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            opacity: 0;
+            transform: translateY(60px);
+            pointer-events: none;
+            transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .slide.active {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: all;
+        }
+
+        .slide.exit-up {
+            opacity: 0;
+            transform: translateY(-60px);
+            pointer-events: none;
+        }
+
+        .slide-content {
+            max-width: 640px;
+            width: 100%;
+        }
+
+        /* Welcome slide */
+        .welcome-slide .slide-content {
+            text-align: center;
+            max-width: 700px;
+        }
+
+        .welcome-logo {
+            margin-bottom: 24px;
+            animation: bounce 2s infinite;
+        }
+
+        .welcome-logo img {
+            width: 120px;
+            height: 120px;
+            object-fit: contain;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .validation-msg {
+            color: #d32f2f;
+            font-size: 0.85rem;
+            margin-top: 12px;
+            display: none;
+            animation: fadeIn 0.3s;
+        }
+
+        .validation-msg.show {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .welcome-title {
+            font-size: 2.8rem;
+            font-weight: 700;
+            color: var(--green-dark);
+            line-height: 1.2;
+            margin-bottom: 16px;
+        }
+
+        .welcome-subtitle {
+            font-size: 1.15rem;
+            color: var(--gray-700);
+            line-height: 1.7;
+            margin-bottom: 40px;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        /* Question styles */
+        .question-number {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--green);
+            margin-bottom: 12px;
+        }
+
+        .question-number span {
+            background: var(--green-pale);
+            color: var(--green);
+            padding: 2px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+        }
+
+        .question-text {
+            font-size: 1.75rem;
+            font-weight: 600;
+            color: var(--gray-900);
+            margin-bottom: 8px;
+            line-height: 1.3;
+        }
+
+        .question-desc {
+            font-size: 0.95rem;
+            color: var(--gray-500);
+            margin-bottom: 32px;
+        }
+
+        /* Input styles */
+        .text-input {
+            width: 100%;
+            padding: 16px 0;
+            font-size: 1.2rem;
+            font-family: 'Inter', sans-serif;
+            border: none;
+            border-bottom: 2px solid var(--gray-300);
+            background: transparent;
+            outline: none;
+            transition: border-color 0.3s;
+            color: var(--gray-900);
+        }
+
+        .text-input:focus {
+            border-bottom-color: var(--green);
+        }
+
+        .text-input::placeholder {
+            color: var(--gray-300);
+        }
+
+        /* Choice buttons */
+        .choices {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .choice {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 16px 20px;
+            border: 2px solid var(--gray-300);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.25s;
+            font-size: 1rem;
+            background: var(--white);
+        }
+
+        .choice.selected {
+            border-color: var(--green);
+            background: var(--green-pale);
+        }
+
+        .choice-key {
+            width: 28px;
+            height: 28px;
+            border: 2px solid var(--gray-300);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--gray-500);
+            flex-shrink: 0;
+            transition: all 0.25s;
+        }
+
+        .choice.selected .choice-key {
+            background: var(--green);
+            border-color: var(--green);
+            color: white;
+        }
+
+        .choice-label {
+            font-weight: 500;
+            color: var(--gray-700);
+        }
+
+        .choice.selected .choice-label {
+            color: var(--green-dark);
+        }
+
+        /* Multi-select chips */
+        .chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .chip {
+            padding: 10px 20px;
+            border: 2px solid var(--gray-300);
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.25s;
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: var(--gray-700);
+            background: var(--white);
+        }
+
+        .chip.selected {
+            border-color: var(--green);
+            background: var(--green);
+            color: white;
+        }
+
+        /* Slider */
+        .slider-container {
+            padding: 20px 0;
+        }
+
+        .slider-value {
+            font-size: 4rem;
+            font-weight: 700;
+            color: var(--green);
+            text-align: center;
+            margin-bottom: 20px;
+            transition: all 0.2s;
+        }
+
+        .slider {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: linear-gradient(90deg, var(--gray-300), var(--green-light), var(--green));
+            outline: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--green);
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(46, 125, 50, 0.3);
+            transition: transform 0.2s;
+        }
+
+        .slider-labels {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 12px;
+            font-size: 0.8rem;
+            color: var(--gray-500);
+        }
+
+        /* Textarea */
+        .textarea {
+            width: 100%;
+            padding: 16px;
+            font-size: 1.05rem;
+            font-family: 'Inter', sans-serif;
+            border: 2px solid var(--gray-300);
+            border-radius: 12px;
+            outline: none;
+            resize: vertical;
+            min-height: 120px;
+            transition: border-color 0.3s;
+            color: var(--gray-900);
+        }
+
+        .textarea:focus {
+            border-color: var(--green);
+        }
+
+        .textarea::placeholder {
+            color: var(--gray-300);
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 14px 32px;
+            border: none;
+            border-radius: 8px;
+            font-family: 'Inter', sans-serif;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.25s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--green), var(--green-medium));
+            color: white;
+            box-shadow: 0 4px 15px rgba(46, 125, 50, 0.3);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-secondary {
+            background: var(--green-pale);
+            color: var(--green-dark);
+        }
+
+        .actions {
+            margin-top: 32px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .key-hint {
+            font-size: 0.8rem;
+            color: var(--gray-500);
+            margin-left: 8px;
+        }
+
+        /* Navigation */
+        .nav-buttons {
+            position: fixed;
+            bottom: 30px;
+            right: 40px;
+            display: flex;
+            gap: 8px;
+            z-index: 100;
+        }
+
+        .nav-btn {
+            width: 48px;
+            height: 48px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            transition: all 0.25s;
+            background: var(--white);
+            color: var(--green);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .nav-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Thank you slide */
+        .thankyou-slide .slide-content {
+            text-align: center;
+        }
+
+        .thankyou-icon {
+            width: 100px;
+            height: 100px;
+            background: linear-gradient(135deg, var(--green-pale), var(--blue-pale));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            margin: 0 auto 24px;
+            animation: scaleIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        @keyframes scaleIn {
+            from { transform: scale(0); }
+            to { transform: scale(1); }
+        }
+
+        .thankyou-title {
+            font-size: 2.2rem;
+            font-weight: 700;
+            color: var(--green-dark);
+            margin-bottom: 12px;
+        }
+
+        .thankyou-text {
+            font-size: 1.1rem;
+            color: var(--gray-700);
+            margin-bottom: 32px;
+        }
+
+        /* Background decoration */
+        .bg-decoration {
+            position: fixed;
+            border-radius: 50%;
+            opacity: 0.08;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .bg-dec-1 {
+            width: 600px;
+            height: 600px;
+            background: var(--green);
+            top: -200px;
+            right: -200px;
+        }
+
+        .bg-dec-2 {
+            width: 400px;
+            height: 400px;
+            background: var(--blue-medium);
+            bottom: -100px;
+            left: -100px;
+        }
+
+        .bg-dec-3 {
+            width: 200px;
+            height: 200px;
+            background: var(--green-light);
+            top: 50%;
+            left: 10%;
+        }
+
+        /* Responsive - Tablets */
+        @media (max-width: 768px) {
+            .header { padding: 15px 20px; }
+            .slide { padding: 80px 20px 100px; }
+            .slide-content { max-width: 100%; }
+            .welcome-title { font-size: 2rem; }
+            .welcome-subtitle { font-size: 1rem; }
+            .question-text { font-size: 1.4rem; }
+            .nav-buttons { bottom: 20px; right: 20px; }
+            .slider-value { font-size: 3rem; }
+            .chips { gap: 8px; }
+            .chip { padding: 8px 16px; font-size: 0.9rem; }
+        }
+
+        /* Responsive - Phones */
+        @media (max-width: 480px) {
+            body { overflow-y: auto; height: auto; }
+            .header { padding: 12px 16px; }
+            .logo { font-size: 1.1rem; gap: 8px; }
+            .logo-icon { width: 30px; height: 30px; }
+            .step-counter { font-size: 0.75rem; }
+
+            .slides-container { height: auto; min-height: 100vh; }
+            .slide {
+                position: relative;
+                display: none;
+                padding: 70px 16px 90px;
+                min-height: 100vh;
+                min-height: 100dvh;
+                align-items: center;
+                justify-content: center;
+            }
+            .slide.active {
+                display: flex;
+                opacity: 1;
+                transform: none;
+            }
+
+            .welcome-logo img { width: 90px; height: 90px; }
+            .welcome-title { font-size: 1.6rem; margin-bottom: 12px; }
+            .welcome-subtitle { font-size: 0.95rem; margin-bottom: 28px; line-height: 1.6; }
+
+            .question-number { margin-bottom: 8px; }
+            .question-number span { font-size: 0.75rem; padding: 2px 8px; }
+            .question-text { font-size: 1.2rem; margin-bottom: 6px; line-height: 1.4; }
+            .question-desc { font-size: 0.85rem; margin-bottom: 20px; }
+
+            .text-input { font-size: 1rem; padding: 12px 0; }
+            .textarea { font-size: 0.95rem; padding: 12px; min-height: 100px; }
+
+            .choices { gap: 8px; }
+            .choice { padding: 12px 14px; gap: 10px; font-size: 0.9rem; border-radius: 10px; }
+            .choice-key { width: 24px; height: 24px; font-size: 0.7rem; }
+
+            .chips { gap: 6px; }
+            .chip { padding: 8px 14px; font-size: 0.85rem; }
+
+            .slider-value { font-size: 2.5rem; margin-bottom: 12px; }
+            .slider { height: 6px; }
+            .slider::-webkit-slider-thumb { width: 28px; height: 28px; }
+            .slider-labels { font-size: 0.7rem; }
+
+            .actions { margin-top: 24px; }
+            .btn { padding: 12px 24px; font-size: 0.9rem; }
+            .key-hint { display: none; }
+
+            .nav-buttons { bottom: 16px; right: 16px; gap: 6px; }
+            .nav-btn { width: 42px; height: 42px; font-size: 1rem; }
+
+            .bg-decoration { display: none; }
+
+            .thankyou-icon { width: 80px; height: 80px; font-size: 2.4rem; }
+            .thankyou-title { font-size: 1.7rem; }
+            .thankyou-text { font-size: 0.95rem; }
+        }
+
+        /* Very small phones */
+        @media (max-width: 360px) {
+            .slide { padding: 70px 12px 80px; }
+            .welcome-title { font-size: 1.4rem; }
+            .question-text { font-size: 1.1rem; }
+            .choice { padding: 10px 12px; }
+            .chip { padding: 6px 12px; font-size: 0.8rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="progress-bar" id="progressBar"></div>
+
+    <div class="bg-decoration bg-dec-1"></div>
+    <div class="bg-decoration bg-dec-2"></div>
+    <div class="bg-decoration bg-dec-3"></div>
+
+    <header class="header">
+        <div class="logo">
+            <div class="logo-icon"><img src="{{ subpath }}/assets/logo.png" alt="CoolBox"></div>
+            CoolBox
+        </div>
+        <div class="step-counter" id="stepCounter"></div>
+    </header>
+
+    <div class="slides-container" id="slidesContainer">
+
+        <!-- Slide 0: Welcome -->
+        <div class="slide welcome-slide active" data-slide="0">
+            <div class="slide-content">
+                <div class="welcome-logo"><img src="{{ subpath }}/assets/logo.png" alt="CoolBox"></div>
+                <h1 class="welcome-title">Grab & Go fresh groceries.</h1>
+                <p class="welcome-subtitle">Smart shopping era, no queues, no stress, eat fresh!</p>
+                <p class="welcome-subtitle">Takes 1 minute.</p>
+                <div class="actions" style="justify-content:center;">
+                    <button class="btn btn-primary" onclick="nextSlide()">
+                        Let's Start &#x2192;
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 1: Supermarket Time -->
+        <div class="slide" data-slide="1">
+            <div class="slide-content">
+                <h2 class="question-text">You spend 140 h/year in supermarkets.</h2>
+                <div class="choices" id="q_supermarket_time">
+                    <div class="choice" data-value="That's a lot, I can't stand it anymore" onclick="selectChoice(this)">
+                        <div class="choice-key">A</div>
+                        <div class="choice-label">That's a lot, I can't stand it anymore</div>
+                    </div>
+                    <div class="choice" data-value="I accept it, but I'm open to becoming more efficient" onclick="selectChoice(this)">
+                        <div class="choice-key">B</div>
+                        <div class="choice-label">I accept it, but I'm open to becoming more efficient</div>
+                    </div>
+                    <div class="choice" data-value="It is what it is..." onclick="selectChoice(this)">
+                        <div class="choice-key">C</div>
+                        <div class="choice-label">It is what it is...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 2: Delivery Failure -->
+        <div class="slide" data-slide="2">
+            <div class="slide-content">
+                <h2 class="question-text">30% of home deliveries fail because of courier-dependency. Did this ever happen to you?</h2>
+                <div class="choices" id="q_delivery_failure">
+                    <div class="choice" data-value="Yes" onclick="selectChoice(this)">
+                        <div class="choice-key">A</div>
+                        <div class="choice-label">Yes</div>
+                    </div>
+                    <div class="choice" data-value="No" onclick="selectChoice(this)">
+                        <div class="choice-key">B</div>
+                        <div class="choice-label">No</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 3: Cool Locker -->
+        <div class="slide" data-slide="3">
+            <div class="slide-content">
+                <h2 class="question-text">Would you pick up fresh groceries from a refrigerated locker near home?</h2>
+                <div class="choices" id="q_cool_locker">
+                    <div class="choice" data-value="Yes" onclick="selectChoice(this)">
+                        <div class="choice-key">A</div>
+                        <div class="choice-label">Yes</div>
+                    </div>
+                    <div class="choice" data-value="No" onclick="selectChoice(this)">
+                        <div class="choice-key">B</div>
+                        <div class="choice-label">No</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 4: Meal Prep -->
+        <div class="slide" data-slide="4">
+            <div class="slide-content">
+                <h2 class="question-text">19:00: I want to cook pasta for 3. Fresh ingredients just appear in your locker. Useful?</h2>
+                <div class="choices" id="q_meal_prep">
+                    <div class="choice" data-value="Yes" onclick="selectChoice(this)">
+                        <div class="choice-key">A</div>
+                        <div class="choice-label">Yes</div>
+                    </div>
+                    <div class="choice" data-value="Maybe" onclick="selectChoice(this)">
+                        <div class="choice-key">B</div>
+                        <div class="choice-label">It could be...</div>
+                    </div>
+                    <div class="choice" data-value="No" onclick="selectChoice(this)">
+                        <div class="choice-key">C</div>
+                        <div class="choice-label">No</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 5: Shopping Recommendations -->
+        <div class="slide" data-slide="5">
+            <div class="slide-content">
+                <h2 class="question-text">Would you like the app to learn your shopping behavior and give you recommendations using AI so you don't forget something?</h2>
+                <div class="choices" id="q_shopping_recs">
+                    <div class="choice" data-value="Yes" onclick="selectChoice(this)">
+                        <div class="choice-key">A</div>
+                        <div class="choice-label">Yes</div>
+                    </div>
+                    <div class="choice" data-value="No" onclick="selectChoice(this)">
+                        <div class="choice-key">B</div>
+                        <div class="choice-label">No</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 6: Would Pay -->
+        <div class="slide" data-slide="6">
+            <div class="slide-content">
+                <h2 class="question-text">Would you pay for fresh groceries, saved time, and sanitized cool locker delivery?</h2>
+                <div class="choices" id="q_would_pay">
+                    <div class="choice" data-value="Yes" onclick="selectChoice(this)">
+                        <div class="choice-key">A</div>
+                        <div class="choice-label">Yes</div>
+                    </div>
+                    <div class="choice" data-value="No" onclick="selectChoice(this)">
+                        <div class="choice-key">B</div>
+                        <div class="choice-label">No</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 7: Gender -->
+        <div class="slide" data-slide="7">
+            <div class="slide-content">
+                <h2 class="question-text">I am a</h2>
+                <div class="choices" id="q_gender">
+                    <div class="choice" data-value="Male" onclick="selectChoice(this)">
+                        <div class="choice-key">A</div>
+                        <div class="choice-label">Male</div>
+                    </div>
+                    <div class="choice" data-value="Female" onclick="selectChoice(this)">
+                        <div class="choice-key">B</div>
+                        <div class="choice-label">Female</div>
+                    </div>
+                    <div class="choice" data-value="Prefer not to say" onclick="selectChoice(this)">
+                        <div class="choice-key">C</div>
+                        <div class="choice-label">Prefer not to say</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 8: Age Range -->
+        <div class="slide" data-slide="8">
+            <div class="slide-content">
+                <h2 class="question-text">My age is between</h2>
+                <div class="choices" id="q_age_range">
+                    <div class="choice" data-value="18-25 years" onclick="selectChoice(this)">
+                        <div class="choice-key">A</div>
+                        <div class="choice-label">18-25 years</div>
+                    </div>
+                    <div class="choice" data-value="25-35 years" onclick="selectChoice(this)">
+                        <div class="choice-key">B</div>
+                        <div class="choice-label">25-35 years</div>
+                    </div>
+                    <div class="choice" data-value="36-50 years" onclick="selectChoice(this)">
+                        <div class="choice-key">C</div>
+                        <div class="choice-label">36-50 years</div>
+                    </div>
+                    <div class="choice" data-value="50+ years" onclick="selectChoice(this)">
+                        <div class="choice-key">D</div>
+                        <div class="choice-label">50+ years</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 9: Email -->
+        <div class="slide" data-slide="9">
+            <div class="slide-content">
+                <h2 class="question-text">May we have your email &#128231; to notify you when CoolBox arrives near your home?</h2>
+                <input type="email" class="text-input" id="q_email" placeholder="your_name@email.com" autocomplete="off">
+                <div class="actions">
+                    <button class="btn btn-primary" onclick="nextSlide()" id="btnEmail">
+                        OK &#x2713;
+                    </button>
+                    <span class="key-hint">press <strong>Enter &#x21B5;</strong></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 10: Name -->
+        <div class="slide" data-slide="10">
+            <div class="slide-content">
+                <h2 class="question-text">What's your name?</h2>
+                <p class="question-desc">So we know who we talked to.</p>
+                <input type="text" class="text-input" id="q_name" placeholder="Type your full name..." autocomplete="off">
+                <div class="actions">
+                    <button class="btn btn-primary" onclick="submitForm()" id="submitBtn">
+                        Submit &#x1F680;
+                    </button>
+                    <span class="key-hint">press <strong>Enter &#x21B5;</strong></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 11: Thank You -->
+        <div class="slide thankyou-slide" data-slide="11">
+            <div class="slide-content">
+                <div class="thankyou-icon">&#x2705;</div>
+                <h2 class="thankyou-title">Thank You!</h2>
+                <p class="thankyou-text">Your feedback is incredibly valuable to us.<br>We'll keep you posted on our fresh grocery journey!</p>
+                <button class="btn btn-secondary" onclick="window.location.href=SUBPATH + '/dashboard'">
+                    View Results Dashboard &#x2192;
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="nav-buttons">
+        <button class="nav-btn" id="prevBtn" onclick="prevSlide()" disabled>&#x2191;</button>
+        <button class="nav-btn" id="nextBtn" onclick="nextSlide()">&#x2193;</button>
+    </div>
+
+    <script>
+        // Set base path for API calls (supports deployment at subpath)
+        const SUBPATH = '{{ subpath }}';
+        const API_BASE = SUBPATH || '';
+        
+        let currentSlide = 0;
+        const totalSlides = 12; // 0-11
+        const totalQuestions = 10;
+        const formData = {};
+
+        function updateProgress() {
+            const progress = (currentSlide / (totalSlides - 1)) * 100;
+            document.getElementById('progressBar').style.width = progress + '%';
+
+            if (currentSlide === 0 || currentSlide === 11) {
+                document.getElementById('stepCounter').textContent = '';
+            } else if (currentSlide <= 10) {
+                document.getElementById('stepCounter').textContent = `${currentSlide} of ${totalQuestions}`;
+            }
+
+            document.getElementById('prevBtn').disabled = currentSlide === 0 || currentSlide === 11;
+            document.getElementById('nextBtn').style.display = currentSlide >= 10 ? 'none' : 'flex';
+        }
+
+        function goToSlide(index) {
+            const slides = document.querySelectorAll('.slide');
+            slides.forEach((slide, i) => {
+                slide.classList.remove('active', 'exit-up');
+                if (i < index) slide.classList.add('exit-up');
+            });
+            slides[index].classList.add('active');
+            currentSlide = index;
+            updateProgress();
+
+            setTimeout(() => {
+                const activeSlide = slides[index];
+                const input = activeSlide.querySelector('.text-input, .textarea');
+                if (input) input.focus();
+            }, 400);
+        }
+
+        // Slides 1-8 are mandatory (all choice-based)
+        // Slides 9-10 (email, name) are optional
+        const mandatorySlides = [1,2,3,4,5,6,7,8]; // choice-required slides
+
+        function nextSlide() {
+            if (currentSlide >= totalSlides - 1) return;
+
+            // Validate mandatory choice slides
+            if (mandatorySlides.includes(currentSlide)) {
+                const activeSlide = document.querySelectorAll('.slide')[currentSlide];
+                const selected = activeSlide.querySelector('.choice.selected');
+                if (!selected) {
+                    showValidation(activeSlide, 'Please select an option to continue.');
+                    return;
+                }
+                hideValidation(activeSlide);
+            }
+
+            goToSlide(currentSlide + 1);
+        }
+
+        function showValidation(slide, msg) {
+            let el = slide.querySelector('.validation-msg');
+            if (!el) {
+                el = document.createElement('div');
+                el.className = 'validation-msg';
+                const choices = slide.querySelector('.choices') || slide.querySelector('.slider-container');
+                if (choices) choices.parentNode.insertBefore(el, choices.nextSibling);
+            }
+            el.textContent = msg;
+            el.classList.add('show');
+        }
+
+        function hideValidation(slide) {
+            const el = slide.querySelector('.validation-msg');
+            if (el) el.classList.remove('show');
+        }
+
+        function prevSlide() {
+            if (currentSlide <= 0) return;
+            goToSlide(currentSlide - 1);
+        }
+
+        function selectChoice(el) {
+            const parent = el.parentElement;
+            parent.querySelectorAll('.choice').forEach(c => c.classList.remove('selected'));
+            el.classList.add('selected');
+
+            const fieldId = parent.id;
+            const fieldName = fieldId.replace('q_', '');
+            formData[fieldName] = el.dataset.value;
+
+            // Auto-advance after a short delay
+            setTimeout(() => nextSlide(), 400);
+        }
+
+        async function submitForm() {
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = true;
+            btn.innerHTML = 'Submitting...';
+
+            formData.email = (document.getElementById('q_email').value || '').trim();
+            formData.name = (document.getElementById('q_name').value || '').trim();
+
+            try {
+                const resp = await fetch(API_BASE + '/api/submit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+                const result = await resp.json();
+                if (result.success) {
+                    goToSlide(11);
+                } else {
+                    throw new Error(result.error || 'Submission failed');
+                }
+            } catch (err) {
+                btn.disabled = false;
+                btn.innerHTML = 'Submit &#x1F680;';
+                alert('Something went wrong: ' + err.message);
+            }
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                if (currentSlide === 10) {
+                    submitForm();
+                } else {
+                    nextSlide();
+                }
+            }
+            if (e.key === 'ArrowDown' || e.key === 'PageDown') {
+                e.preventDefault();
+                nextSlide();
+            }
+            if (e.key === 'ArrowUp' || e.key === 'PageUp') {
+                e.preventDefault();
+                prevSlide();
+            }
+
+            // Keyboard shortcuts for choices (A-E)
+            const activeSlide = document.querySelector('.slide.active');
+            if (activeSlide) {
+                const choices = activeSlide.querySelectorAll('.choice');
+                if (choices.length > 0) {
+                    const keyMap = { 'a': 0, 'b': 1, 'c': 2, 'd': 3, 'e': 4 };
+                    const idx = keyMap[e.key.toLowerCase()];
+                    if (idx !== undefined && idx < choices.length) {
+                        selectChoice(choices[idx]);
+                    }
+                }
+            }
+        });
+
+        updateProgress();
+    </script>
+</body>
+</html>
