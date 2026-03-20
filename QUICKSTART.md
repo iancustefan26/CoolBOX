@@ -31,13 +31,13 @@ That's it. The script will:
 
 | File / Folder | Purpose |
 |---|---|
-| `app.py` | Flask backend (form, dashboard, API, serves presentation) |
+| `frontend/` | React/Vite source for the presentation slides |
+| `backend/app.py` | Flask backend (form, dashboard, API, serves presentation) |
+| `backend/requirements.txt` | Python dependencies (Flask, openpyxl) |
+| `backend/templates/` | HTML templates (form & dashboard) |
+| `backend/assets/` | Static files (logo) |
 | `Dockerfile` | Multi-stage Docker build definition |
 | `deploy.sh` | Automated deployment script |
-| `requirements.txt` | Python dependencies (Flask, openpyxl) |
-| `templates/` | HTML templates (form & dashboard) |
-| `assets/` | Static files (logo) |
-| `CoolBOX Business Presentation/` | React/Vite source for the presentation slides |
 | `.dockerignore` | Excludes unnecessary files from Docker build |
 
 ---
