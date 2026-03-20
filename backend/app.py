@@ -1,11 +1,10 @@
 import os
-import json
-import sqlite3
-from datetime import datetime
-from flask import Flask, render_template, request, jsonify, send_file, send_from_directory, url_for
+from datetime import datetime, timezone
+from flask import Flask, render_template, request, jsonify, send_file, send_from_directory
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from io import BytesIO
+from google.cloud import firestore
 
 # Support deployment at subpath via environment variable
 SUBPATH = os.getenv('APP_SUBPATH', '').strip('/')
@@ -16,113 +15,10 @@ if SUBPATH:
 PRESENTATION_DIR = os.path.join(os.path.dirname(__file__), 'presentation')
 
 app = Flask(__name__, static_folder='assets', static_url_path=f'{SUBPATH}/assets')
-DATABASE = os.path.join(os.path.dirname(__file__), 'responses.db')
 
-
-def get_db():
-    conn = sqlite3.connect(DATABASE)
-    conn.row_factory = sqlite3.Row
-    return conn
-
-
-def init_db():
-    conn = get_db()
-    conn.execute('''
-        CREATE TABLE IF NOT EXISTS responses (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            delivery_failure TEXT,
-            supermarket_time TEXT,
-            cool_locker TEXT,
-            failed_find TEXT,
-            auto_availability TEXT,
-            meal_prep TEXT,
-            shopping_recs TEXT,
-            hygiene_importance INTEGER,
-            would_pay TEXT,
-            gender TEXT,
-            age_range TEXT,
-            email TEXT,
-            name TEXT,
-            submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    conn.commit()
-    conn.close()
-
-
-# Initialize database at startup (works with both local and Gunicorn)
-try:
-    init_db()
-except Exception as e:
-    print(f"Warning: Database initialization error: {e}", flush=True)
-
-
-@app.route('/coolbox/assets/<path:filename>')
-def presentation_assets(filename):
-    return send_from_directory(os.path.join(PRESENTATION_DIR, 'assets'), filename)
-
-
-@app.route('/coolbox/')
-def presentation_index():
-    return send_from_directory(PRESENTATION_DIR, 'index.html')
-
-
-@app.route('/coolbox/landingpage')
-def presentation_landingpage():
-    return send_from_directory(PRESENTATION_DIR, 'index.html')
-
-
-@app.route(f'{SUBPATH}/' if SUBPATH else '/')
-def index():
-    return render_template('form.html', subpath=SUBPATH)
-
-
-@app.route(f'{SUBPATH}/dashboard' if SUBPATH else '/dashboard')
-def dashboard():
-    return render_template('dashboard.html', subpath=SUBPATH)
-
-
-@app.route(f'{SUBPATH}/api/submit' if SUBPATH else '/api/submit', methods=['POST'])
-
-def submit():
-    data = request.get_json()
-    if not data:
-        return jsonify({'error': 'No data provided'}), 400
-
-    conn = get_db()
-    conn.execute('''
-        INSERT INTO responses (delivery_failure, supermarket_time, cool_locker,
-            failed_find, auto_availability, meal_prep, shopping_recs,
-            hygiene_importance, would_pay, gender, age_range, email, name)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ''', (
-        data.get('delivery_failure', ''),
-        data.get('supermarket_time', ''),
-        data.get('cool_locker', ''),
-        data.get('failed_find', ''),
-        data.get('auto_availability', ''),
-        data.get('meal_prep', ''),
-        data.get('shopping_recs', ''),
-        data.get('hygiene_importance', None),
-        data.get('would_pay', ''),
-        data.get('gender', ''),
-        data.get('age_range', ''),
-        data.get('email', '').strip(),
-        data.get('name', '').strip()
-    ))
-    conn.commit()
-    conn.close()
-    return jsonify({'success': True, 'message': 'Response saved!'})
-
-
-def yn_stats(conn, column):
-    rows = conn.execute(f'''
-        SELECT {column}, COUNT(*) as count
-        FROM responses WHERE {column} != ''
-        GROUP BY {column}
-    ''').fetchall()
-    return [{'label': r[column], 'count': r['count']} for r in rows]
-
+# Firestore client (auto-authenticated on Cloud Run via service account)
+db = firestore.Client()
+COLLECTION = 'responses'
 
 # All known options per question (order matters for chart display)
 ALL_OPTIONS = {
@@ -140,76 +36,131 @@ ALL_OPTIONS = {
     'age_range': ['18-25 years', '25-35 years', '36-50 years', '50+ years'],
 }
 
+TEXT_FIELDS = [
+    'delivery_failure', 'supermarket_time', 'cool_locker', 'failed_find',
+    'auto_availability', 'meal_prep', 'shopping_recs', 'would_pay',
+    'gender', 'age_range', 'email', 'name',
+]
 
-def full_stats(conn, column):
-    """Return stats for a column, ensuring all known options are present (even with count 0)."""
-    rows = conn.execute(f'''
-        SELECT {column}, COUNT(*) as count
-        FROM responses WHERE {column} != ''
-        GROUP BY {column}
-    ''').fetchall()
-    counts = {r[column]: r['count'] for r in rows}
 
-    options = ALL_OPTIONS.get(column)
+def _count_by_field(responses, field):
+    """Count occurrences of each value in a field, respecting ALL_OPTIONS order."""
+    counts = {}
+    for r in responses:
+        val = r.get(field, '')
+        if val:
+            counts[val] = counts.get(val, 0) + 1
+    options = ALL_OPTIONS.get(field)
     if options:
         return [{'label': opt, 'count': counts.get(opt, 0)} for opt in options]
-    # Fallback for questions without a known option list
-    return [{'label': r[column], 'count': r['count']} for r in rows]
+    return [{'label': k, 'count': v} for k, v in counts.items()]
+
+
+# ──── Presentation routes ────
+
+@app.route('/coolbox/assets/<path:filename>')
+def presentation_assets(filename):
+    return send_from_directory(os.path.join(PRESENTATION_DIR, 'assets'), filename)
+
+
+@app.route('/coolbox/')
+def presentation_index():
+    return send_from_directory(PRESENTATION_DIR, 'index.html')
+
+
+@app.route('/coolbox/landingpage')
+def presentation_landingpage():
+    return send_from_directory(PRESENTATION_DIR, 'index.html')
+
+
+# ──── Form routes ────
+
+@app.route(f'{SUBPATH}/' if SUBPATH else '/')
+def index():
+    return render_template('form.html', subpath=SUBPATH)
+
+
+@app.route(f'{SUBPATH}/dashboard' if SUBPATH else '/dashboard')
+def dashboard():
+    return render_template('dashboard.html', subpath=SUBPATH)
+
+
+@app.route(f'{SUBPATH}/api/submit' if SUBPATH else '/api/submit', methods=['POST'])
+def submit():
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+
+    doc = {
+        'delivery_failure': data.get('delivery_failure', ''),
+        'supermarket_time': data.get('supermarket_time', ''),
+        'cool_locker': data.get('cool_locker', ''),
+        'failed_find': data.get('failed_find', ''),
+        'auto_availability': data.get('auto_availability', ''),
+        'meal_prep': data.get('meal_prep', ''),
+        'shopping_recs': data.get('shopping_recs', ''),
+        'hygiene_importance': data.get('hygiene_importance'),
+        'would_pay': data.get('would_pay', ''),
+        'gender': data.get('gender', ''),
+        'age_range': data.get('age_range', ''),
+        'email': data.get('email', '').strip(),
+        'name': data.get('name', '').strip(),
+        'submitted_at': datetime.now(timezone.utc),
+    }
+    db.collection(COLLECTION).add(doc)
+    return jsonify({'success': True, 'message': 'Response saved!'})
 
 
 @app.route(f'{SUBPATH}/api/stats' if SUBPATH else '/api/stats')
 def stats():
-    conn = get_db()
+    responses = [doc.to_dict() for doc in db.collection(COLLECTION).stream()]
+    total = len(responses)
 
-    total = conn.execute('SELECT COUNT(*) as c FROM responses').fetchone()['c']
+    delivery_failure = _count_by_field(responses, 'delivery_failure')
+    supermarket_time = _count_by_field(responses, 'supermarket_time')
+    cool_locker = _count_by_field(responses, 'cool_locker')
+    failed_find = _count_by_field(responses, 'failed_find')
+    auto_availability = _count_by_field(responses, 'auto_availability')
+    meal_prep = _count_by_field(responses, 'meal_prep')
+    shopping_recs = _count_by_field(responses, 'shopping_recs')
+    would_pay = _count_by_field(responses, 'would_pay')
+    gender = _count_by_field(responses, 'gender')
+    age_range = _count_by_field(responses, 'age_range')
 
-    delivery_failure = full_stats(conn, 'delivery_failure')
+    # Hygiene importance (numeric)
+    hygiene_values = [r['hygiene_importance'] for r in responses
+                      if r.get('hygiene_importance') is not None]
+    if hygiene_values:
+        hygiene_avg = round(sum(hygiene_values) / len(hygiene_values), 1)
+        hygiene_dist_map = {}
+        for v in hygiene_values:
+            hygiene_dist_map[v] = hygiene_dist_map.get(v, 0) + 1
+        hygiene_dist = [{'label': str(k), 'count': v}
+                        for k, v in sorted(hygiene_dist_map.items())]
+    else:
+        hygiene_avg = 0
+        hygiene_dist = []
 
-    supermarket_time = full_stats(conn, 'supermarket_time')
+    # Recent responses
+    sorted_responses = sorted(
+        responses,
+        key=lambda r: r.get('submitted_at') or datetime.min.replace(tzinfo=timezone.utc),
+        reverse=True,
+    )
+    recent = [
+        {
+            'name': r.get('name') or 'Anonymous',
+            'email': r.get('email') or 'N/A',
+            'date': r['submitted_at'].isoformat() if r.get('submitted_at') else '',
+        }
+        for r in sorted_responses[:10]
+    ]
 
-    cool_locker = full_stats(conn, 'cool_locker')
-    failed_find = full_stats(conn, 'failed_find')
-    auto_availability = full_stats(conn, 'auto_availability')
-
-    meal_prep = full_stats(conn, 'meal_prep')
-
-    shopping_recs = full_stats(conn, 'shopping_recs')
-
-    hygiene = conn.execute('''
-        SELECT AVG(hygiene_importance) as avg_val,
-               MIN(hygiene_importance) as min_val,
-               MAX(hygiene_importance) as max_val
-        FROM responses WHERE hygiene_importance IS NOT NULL
-    ''').fetchone()
-
-    hygiene_dist = conn.execute('''
-        SELECT hygiene_importance, COUNT(*) as count
-        FROM responses WHERE hygiene_importance IS NOT NULL
-        GROUP BY hygiene_importance ORDER BY hygiene_importance
-    ''').fetchall()
-
-    would_pay = full_stats(conn, 'would_pay')
-
-    gender = full_stats(conn, 'gender')
-
-    age_range = full_stats(conn, 'age_range')
-
-    recent = conn.execute('''
-        SELECT name, email, submitted_at FROM responses
-        ORDER BY submitted_at DESC LIMIT 10
-    ''').fetchall()
-
-    # Count answered per question
+    # Answered counts
     answered = {}
-    for col in ['delivery_failure', 'supermarket_time', 'cool_locker', 'failed_find',
-                'auto_availability', 'meal_prep', 'shopping_recs', 'would_pay',
-                'gender', 'age_range', 'email', 'name']:
-        r = conn.execute(f"SELECT COUNT(*) as c FROM responses WHERE {col} != ''").fetchone()
-        answered[col] = r['c']
-    r = conn.execute("SELECT COUNT(*) as c FROM responses WHERE hygiene_importance IS NOT NULL").fetchone()
-    answered['hygiene_importance'] = r['c']
-
-    conn.close()
+    for field in TEXT_FIELDS:
+        answered[field] = sum(1 for r in responses if r.get(field, ''))
+    answered['hygiene_importance'] = len(hygiene_values)
 
     return jsonify({
         'total_responses': total,
@@ -221,25 +172,22 @@ def stats():
         'auto_availability': auto_availability,
         'meal_prep': meal_prep,
         'shopping_recs': shopping_recs,
-        'hygiene_avg': round(hygiene['avg_val'], 1) if hygiene['avg_val'] else 0,
-        'hygiene_dist': [{'label': str(r['hygiene_importance']), 'count': r['count']} for r in hygiene_dist],
+        'hygiene_avg': hygiene_avg,
+        'hygiene_dist': hygiene_dist,
         'would_pay': would_pay,
         'gender': gender,
         'age_range': age_range,
-        'recent': [{'name': r['name'] or 'Anonymous', 'email': r['email'] or 'N/A', 'date': r['submitted_at']} for r in recent]
+        'recent': recent,
     })
 
 
 @app.route(f'{SUBPATH}/api/export' if SUBPATH else '/api/export')
 def export_excel():
-    conn = get_db()
-    rows = conn.execute('''
-        SELECT delivery_failure, supermarket_time, cool_locker,
-               meal_prep, shopping_recs, would_pay, gender, age_range, 
-               email, name, submitted_at
-        FROM responses ORDER BY submitted_at DESC
-    ''').fetchall()
-    conn.close()
+    responses = [doc.to_dict() for doc in db.collection(COLLECTION).stream()]
+    responses.sort(
+        key=lambda r: r.get('submitted_at') or datetime.min.replace(tzinfo=timezone.utc),
+        reverse=True,
+    )
 
     wb = Workbook()
     ws = wb.active
@@ -255,10 +203,8 @@ def export_excel():
     header_fill = PatternFill(start_color="009000", end_color="009000", fill_type="solid")
     header_alignment = Alignment(horizontal="center", vertical="center")
     thin_border = Border(
-        left=Side(style='thin'),
-        right=Side(style='thin'),
-        top=Side(style='thin'),
-        bottom=Side(style='thin')
+        left=Side(style='thin'), right=Side(style='thin'),
+        top=Side(style='thin'), bottom=Side(style='thin'),
     )
 
     for col, header in enumerate(headers, 1):
@@ -268,12 +214,15 @@ def export_excel():
         cell.alignment = header_alignment
         cell.border = thin_border
 
-    for row_idx, row in enumerate(rows, 2):
+    for row_idx, r in enumerate(responses, 2):
+        submitted = r.get('submitted_at')
         values = [
-            row['supermarket_time'], row['delivery_failure'], row['cool_locker'],
-            row['meal_prep'], row['shopping_recs'],
-            row['would_pay'], row['gender'], row['age_range'], 
-            row['email'], row['name'], row['submitted_at']
+            r.get('supermarket_time', ''), r.get('delivery_failure', ''),
+            r.get('cool_locker', ''), r.get('meal_prep', ''),
+            r.get('shopping_recs', ''), r.get('would_pay', ''),
+            r.get('gender', ''), r.get('age_range', ''),
+            r.get('email', ''), r.get('name', ''),
+            submitted.isoformat() if submitted else '',
         ]
         for col_idx, value in enumerate(values, 1):
             cell = ws.cell(row=row_idx, column=col_idx, value=value)
@@ -281,18 +230,16 @@ def export_excel():
 
     for col in range(1, len(headers) + 1):
         max_length = len(str(ws.cell(row=1, column=col).value))
-        for row in range(2, len(rows) + 2):
+        for row in range(2, len(responses) + 2):
             cell_val = ws.cell(row=row, column=col).value
             if cell_val:
                 max_length = max(max_length, len(str(cell_val)))
         ws.column_dimensions[ws.cell(row=1, column=col).column_letter].width = min(max_length + 4, 50)
 
-    # Set auto filter to header row and all data
-    if len(rows) > 0:
+    if len(responses) > 0:
         last_col_letter = ws.cell(row=1, column=len(headers)).column_letter
-        ws.auto_filter.ref = f"A1:{last_col_letter}{len(rows) + 1}"
+        ws.auto_filter.ref = f"A1:{last_col_letter}{len(responses) + 1}"
 
-    # Use BytesIO to avoid temp file issues
     output = BytesIO()
     wb.save(output)
     output.seek(0)
@@ -301,10 +248,9 @@ def export_excel():
         output,
         as_attachment=True,
         download_name=f'fresh_groceries_responses_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx',
-        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     )
 
 
 if __name__ == '__main__':
-    init_db()
     app.run(host='0.0.0.0', port=8080)
